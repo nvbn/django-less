@@ -1,4 +1,4 @@
-from less.settings import LESS_EXECUTABLE, LESS_OUTPUT_DIR
+from less.settings import LESS_EXECUTABLE, LESS_OUTPUT_DIR, LESS_STORE_IN_MEDIA
 from django.conf import settings
 import logging
 import posixpath
@@ -10,9 +10,10 @@ import subprocess
 logger = logging.getLogger("less")
 
 
-STATIC_ROOT = getattr(settings, "STATIC_ROOT", getattr(settings, "STATIC_ROOT"))
+STATIC_ROOT = getattr(settings, "STATIC_ROOT", getattr(settings, "MEDIA_ROOT"))
 STATIC_URL = getattr(settings, "STATIC_URL", getattr(settings, "MEDIA_URL"))
-
+MEDIA_ROOT = getattr(settings, "MEDIA_ROOT", None)
+MEDIA_URL = getattr(settings, "MEDIA_URL", None)
 
 class URLConverter(object):
 
@@ -35,8 +36,11 @@ class URLConverter(object):
 
 
 def compile_less(input, output, less_path):
+    if LESS_STORE_IN_MEDIA:
+        less_root = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
+    else:
+        less_root = os.path.join(STATIC_ROOT, LESS_OUTPUT_DIR)
 
-    less_root = os.path.join(STATIC_ROOT, LESS_OUTPUT_DIR)
     if not os.path.exists(less_root):
         os.makedirs(less_root)
 

@@ -1,8 +1,12 @@
 from tempfile import NamedTemporaryFile
 from ..cache import get_cache_key, get_hexdigest, get_hashed_mtime
-from ..utils import compile_less, STATIC_ROOT
-from ..settings import LESS_EXECUTABLE, LESS_USE_CACHE,\
-    LESS_CACHE_TIMEOUT, LESS_OUTPUT_DIR, LESS_DEVMODE, LESS_DEVMODE_WATCH_DIRS
+from ..utils import compile_less, STATIC_ROOT, MEDIA_ROOT
+from ..settings import (
+    LESS_EXECUTABLE, LESS_USE_CACHE,
+    LESS_CACHE_TIMEOUT, LESS_OUTPUT_DIR, 
+    LESS_DEVMODE, LESS_DEVMODE_WATCH_DIRS,
+    LESS_STORE_IN_MEDIA,
+)
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
@@ -65,8 +69,12 @@ def do_inlineless(parser, token):
 
 
 def less_paths(path):
-
-    full_path = os.path.join(STATIC_ROOT, path)
+    if LESS_STORE_IN_MEDIA:
+        full_path = os.path.join(MEDIA_ROOT, path)
+        output_part = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
+    else:
+        full_path = os.path.join(STATIC_ROOT, path)
+        output_part = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
 
     if settings.DEBUG and not os.path.exists(full_path):
         # while developing it is more confortable
@@ -78,7 +86,7 @@ def less_paths(path):
             raise TemplateSyntaxError("Can't find staticfile named: {}".format(path))
 
     file_name = os.path.split(path)[-1]
-    output_dir = os.path.join(STATIC_ROOT, LESS_OUTPUT_DIR, os.path.dirname(path))
+    output_dir = os.path.join(output_part, os.path.dirname(path))
 
     return full_path, file_name, output_dir
 
@@ -99,6 +107,7 @@ def less(path):
     output_path = os.path.join(output_dir, output_file)
 
     encoded_full_path = full_path
+
     if isinstance(full_path, unicode):
         filesystem_encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
         encoded_full_path = full_path.encode(filesystem_encoding)
@@ -112,5 +121,4 @@ def less(path):
         for filename in os.listdir(output_dir):
             if filename.startswith(base_file_name) and filename != compiled_filename:
                 os.remove(os.path.join(output_dir, filename))
-
     return os.path.join(LESS_OUTPUT_DIR, os.path.dirname(path), output_file)
