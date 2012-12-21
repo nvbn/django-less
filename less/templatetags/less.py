@@ -74,7 +74,7 @@ def less_paths(path):
         output_part = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
     else:
         full_path = os.path.join(STATIC_ROOT, path)
-        output_part = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
+        output_part = os.path.join(STATIC_ROOT, LESS_OUTPUT_DIR)
 
     if settings.DEBUG and not os.path.exists(full_path):
         # while developing it is more confortable
