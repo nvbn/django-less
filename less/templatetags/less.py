@@ -1,6 +1,6 @@
 from tempfile import NamedTemporaryFile
 from ..cache import get_cache_key, get_hexdigest, get_hashed_mtime
-from ..utils import compile_less, STATIC_ROOT, MEDIA_ROOT
+from ..utils import compile_less, STATIC_ROOT, MEDIA_ROOT, mtime_checker
 from ..settings import (
     LESS_EXECUTABLE, LESS_USE_CACHE,
     LESS_CACHE_TIMEOUT, LESS_OUTPUT_DIR, 
@@ -15,6 +15,7 @@ import logging
 import subprocess
 import os
 import sys
+import re
 
 
 logger = logging.getLogger("less")
@@ -29,8 +30,6 @@ class InlineLessNode(Node):
         self.nodelist = nodelist
 
     def compile(self, source):
-
-
         source_file = NamedTemporaryFile(delete=False)
         source_file.write(source)
         source_file.close()
@@ -91,6 +90,29 @@ def less_paths(path):
     return full_path, file_name, output_dir
 
 
+LESS_IMPORT_RE = re.compile(r"""@import\s+['"](.+?\.less)['"]\s*;""")
+
+
+def _get_imports(path):
+    paths = []
+    root = os.path.dirname(path)
+    with open(path) as less_file:
+        for line in less_file.readlines():
+            for imported in LESS_IMPORT_RE.findall(line):
+                paths.append(os.path.join(root, imported))
+    return paths
+
+
+def _check_mtimes(paths):
+    result = True
+    for path in paths:
+        mtime = get_hashed_mtime(path)
+        if not mtime_checker.check(path, mtime):
+            result = False
+            mtime_checker.set(path, mtime)
+    return result
+
+
 @register.simple_tag
 def less(path):
 
@@ -98,9 +120,6 @@ def less(path):
 
     full_path, file_name, output_dir = less_paths(path)
     base_file_name = os.path.splitext(file_name)[0]
-
-    if LESS_DEVMODE and any(map(lambda watched_dir: full_path.startswith(watched_dir), LESS_DEVMODE_WATCH_DIRS)):
-        return os.path.join(os.path.dirname(path), "%s.css" % base_file_name)
 
     hashed_mtime = get_hashed_mtime(full_path)
     output_file = "%s-%s.css" % (base_file_name, hashed_mtime)
@@ -112,7 +131,9 @@ def less(path):
         filesystem_encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
         encoded_full_path = full_path.encode(filesystem_encoding)
 
-    if not os.path.exists(output_path):
+    imports = _get_imports(full_path)
+
+    if not os.path.exists(output_path) or not _check_mtimes(imports):
         if not compile_less(encoded_full_path, output_path, path):
             return path
 

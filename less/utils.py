@@ -61,3 +61,17 @@ def compile_less(input, output, less_path):
     compiled_file.close()
 
     return True
+
+
+class MtimeChecker(object):
+    def __init__(self):
+        self._file_mtime = {}
+
+    def check(self, name, mtime):
+        return self._file_mtime.get(name) == mtime
+
+    def set(self, name, mtime):
+        self._file_mtime[name] = mtime
+
+
+mtime_checker = MtimeChecker()
