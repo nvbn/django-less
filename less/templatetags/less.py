@@ -69,7 +69,7 @@ def do_inlineless(parser, token):
 
 def less_paths(path):
     if LESS_STORE_IN_MEDIA:
-        full_path = os.path.join(MEDIA_ROOT, path)
+        full_path = os.path.join(settings.EDITABLE_STATIC_PATH, path)
         output_part = os.path.join(MEDIA_ROOT, LESS_OUTPUT_DIR)
     else:
         full_path = os.path.join(STATIC_ROOT, path)
@@ -115,10 +115,10 @@ def _check_mtimes(paths):
 
 @register.simple_tag
 def less(path):
-
     logger.info("processing file %s" % path)
 
     full_path, file_name, output_dir = less_paths(path)
+    print full_path
     base_file_name = os.path.splitext(file_name)[0]
 
     hashed_mtime = get_hashed_mtime(full_path)
